@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ko">
+    <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>승패 관리 프로그램 by.미노펜</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font-family: sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        color: #333;
+        background-color: #f5f5f5;
+      }
+      h1 {
+        color: #2600ff;
+      }
+      textarea {
+        width: 100%;
+        height: 150px;
+        margin-bottom: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        padding: 8px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+      }
+      th,
+      td {
+        border: 1px solid #ccc;
+        text-align: center;
+        padding: 8px;
+      }
+      th {
+        background-color: #5264ff;
+        color: #fff;
+      }
+      button {
+        display: inline-block;
+        background-color: #785bf8;
+        color: #fff;
+        padding: 8px 16px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+        margin-bottom: 20px;
+      }
+      button:hover {
+        background-color: #413df3;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>승패 관리 프로그램 by.미노펜</h1>
+    <input id="searchInput" type="text" placeholder="이름 검색" />
+    <button id="searchButton">
+      비슷한 이름이 아래에 추천됩니다. 클릭하시면 이름과 점수가 자동 복사됩니다. 
+    </button>
+  <ul id="suggestions"></ul>
+    <textarea id="inputArea" placeholder="이름 점수 승리 패배"></textarea>
+    <button id="inputButton">시트입력</button>
+    <br />
+    <textarea id="winnersArea" placeholder="승리자"></textarea>
+    <textarea id="losersArea" placeholder="패배자"></textarea>
+    <button id="processButton">승패 반영</button>
+    <br />
+    <table id="playersTable" border="1">
+      <tr>
+        <th>이름</th>
+        <th>점수</th>
+        <th>승리</th>
+        <th>패배</th>
+      </tr>
+    </table>
+    <script>
+      const inputArea = document.getElementById("inputArea");
+      const winnersArea = document.getElementById("winnersArea");
+      const losersArea = document.getElementById("losersArea");
+      const playersTable = document.getElementById("playersTable");
+
+      const processInput = () => {
+  const lines = inputArea.value.split("\n");
+  lines.forEach((line) => {
+    const [name, score, wins, losses] = line.trim().split(/\s+/);
+    if (!name) return;
+
+    // 중복 확인
+    let isDuplicated = false;
+    for (let i = 1; i < playersTable.rows.length; i++) {
+      if (playersTable.rows[i].cells[0].innerText === name) {
+        isDuplicated = true;
+        break;
+      }
+    }
+
+    if (isDuplicated) return;
+
+    const newRow = playersTable.insertRow(-1);
+    newRow.insertCell(0).innerText = name;
+    newRow.insertCell(1).innerText = score ? parseInt(score, 10) : 0;
+    newRow.insertCell(2).innerText = wins ? parseInt(wins, 10) : 0;
+    newRow.insertCell(3).innerText = losses ? parseInt(losses, 10) : 0;
+  });
+};
+
+      const processResults = () => {
+  const confirmResult = confirm("반영하시겠습니까?");
+  if (!confirmResult) return;
+
+  const winners = winnersArea.value
+    .split(" ")
+    .map((name) => name.trim())
+    .filter((name) => name);
+  const losers = losersArea.value
+    .split(" ")
+    .map((name) => name.trim())
+    .filter((name) => name);
+
+  for (let i = 1; i < playersTable.rows.length; i++) {
+    const row = playersTable.rows[i];
+    const name = row.cells[0].innerText;
+
+    if (winners.includes(name)) {
+      row.cells[1].innerText = parseInt(row.cells[1].innerText) + 10;
+      row.cells[2].innerText = parseInt(row.cells[2].innerText) + 1;
+    }
+
+    if (losers.includes(name)) {
+      row.cells[1].innerText = parseInt(row.cells[1].innerText) - 10;
+      row.cells[3].innerText = parseInt(row.cells[3].innerText) + 1;
+    }
+  }
+  winnersArea.value = '';
+  losersArea.value = '';
+};
+
+document.getElementById("inputButton").addEventListener("click", processInput);
+      document.getElementById("processButton").addEventListener("click", processResults);
+
+      // 검색 기능 및 자동 완성 구현
+      const searchInput = document.getElementById("searchInput");
+      const suggestions = document.getElementById("suggestions");
+
+      const searchPlayer = (query) => {
+        const players = Array.from(playersTable.rows)
+          .slice(1)
+          .map((row) => ({
+            name: row.cells[0].innerText,
+            score: row.cells[1].innerText,
+          }));
+
+        return players.filter((player) => player.name.toLowerCase().includes(query.toLowerCase()));
+      };
+
+      const showSuggestions = (query) => {
+        suggestions.innerHTML = "";
+        if (!query) return;
+
+        const results = searchPlayer(query);
+        results.forEach((result) => {
+          const li = document.createElement("li");
+          li.innerText = result.name;
+          li.addEventListener("click", () => {
+            const textToCopy = `${result.name} ${result.score}`;
+            navigator.clipboard.writeText(textToCopy).then(
+              () => {
+                alert(`${result.name}와 ${result.score}가 복사되었습니다.`);
+              },
+              (err) => {
+                console.error("복사 실패: ", err);
+              }
+            );
+          });
+          suggestions.appendChild(li);
+        });
+      };
+
+      searchInput.addEventListener("input", (e) => showSuggestions(e.target.value));
+    </script>
+  </body>
+</html>
